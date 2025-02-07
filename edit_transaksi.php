@@ -1,5 +1,6 @@
 <?php
 // financial-record/edit_transaksi.php
+
 $host     = "127.0.0.1";
 $user     = "root";
 $password = "password_baru";
@@ -16,11 +17,11 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
 
 $id = $_GET['id'];
 
-// Ambil data tag untuk dropdown (untuk pengeluaran)
+// Ambil data tag untuk dropdown (untuk transaksi yang memerlukan tag)
 $tags = [];
 $sqlTag = "SELECT * FROM expense_tags ORDER BY nama_tag ASC";
 $resultTag = $conn->query($sqlTag);
-if ($resultTag->num_rows > 0) {
+if ($resultTag && $resultTag->num_rows > 0) {
     while ($row = $resultTag->fetch_assoc()) {
         $tags[] = $row;
     }
@@ -42,16 +43,19 @@ $stmt->close();
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $tanggal   = $_POST['tanggal'];
     $waktu     = $_POST['waktu'];
-    $tipe      = $_POST['tipe'];
+    $tipe      = $_POST['tipe']; // Nilai yang dikirim akan berupa 'pemasukan', 'pengeluaran', 'pinjaman', 'bayar pinjaman', atau 'beri pinjaman'
     $jumlah    = $_POST['jumlah'];
     $deskripsi = $_POST['deskripsi'];
+    // Jika tag_id kosong, set ke null; nilai hanya digunakan untuk tipe transaksi yang memerlukan tag
     $tag_id    = (!empty($_POST['tag_id'])) ? $_POST['tag_id'] : null;
     
-    if ($tipe == 'income') {
+    // Untuk tipe transaksi yang tidak memerlukan tag (pemasukan atau pinjaman), set tag_id menjadi NULL
+    if ($tipe == 'pemasukan' || $tipe == 'pinjaman') {
         $sql = "UPDATE transactions SET tanggal = ?, waktu = ?, tipe = ?, jumlah = ?, deskripsi = ?, tag_id = NULL WHERE id = ?";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("sssdsi", $tanggal, $waktu, $tipe, $jumlah, $deskripsi, $id);
     } else {
+        // Untuk tipe transaksi yang memerlukan tag (pengeluaran, bayar pinjaman, beri pinjaman)
         $sql = "UPDATE transactions SET tanggal = ?, waktu = ?, tipe = ?, jumlah = ?, deskripsi = ?, tag_id = ? WHERE id = ?";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("sssdsii", $tanggal, $waktu, $tipe, $jumlah, $deskripsi, $tag_id, $id);
@@ -76,8 +80,11 @@ $conn->close();
   <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
   <script>
     $(document).ready(function(){
+      // Tampilkan atau sembunyikan dropdown tag berdasarkan nilai tipe
       $('#tipe').on('change', function(){
-        if ($(this).val() == 'income') {
+        var selected = $(this).val();
+        // Tipe yang tidak memerlukan tag: 'pemasukan' dan 'pinjaman'
+        if (selected === 'pemasukan' || selected === 'pinjaman') {
           $('#tagGroup').hide();
         } else {
           $('#tagGroup').show();
@@ -96,33 +103,36 @@ $conn->close();
     <form method="post" action="">
       <div class="form-group">
         <label for="tanggal">Tanggal</label>
-        <input type="date" name="tanggal" id="tanggal" class="form-control" value="<?= $data['tanggal']; ?>" required>
+        <input type="date" name="tanggal" id="tanggal" class="form-control" value="<?= htmlspecialchars($data['tanggal']); ?>" required>
       </div>
       <div class="form-group">
         <label for="waktu">Waktu</label>
-        <input type="time" name="waktu" id="waktu" class="form-control" value="<?= $data['waktu']; ?>" required>
+        <input type="time" name="waktu" id="waktu" class="form-control" value="<?= htmlspecialchars($data['waktu']); ?>" required>
       </div>
       <div class="form-group">
         <label for="tipe">Tipe Transaksi</label>
         <select name="tipe" id="tipe" class="form-control">
-          <option value="income" <?= ($data['tipe'] == 'income') ? 'selected' : ''; ?>>Pemasukan</option>
-          <option value="expense" <?= ($data['tipe'] == 'expense') ? 'selected' : ''; ?>>Pengeluaran</option>
+          <option value="pemasukan" <?= ($data['tipe'] == 'pemasukan') ? 'selected' : ''; ?>>Pemasukan</option>
+          <option value="pengeluaran" <?= ($data['tipe'] == 'pengeluaran') ? 'selected' : ''; ?>>Pengeluaran</option>
+          <option value="pinjaman" <?= ($data['tipe'] == 'pinjaman') ? 'selected' : ''; ?>>Pinjaman</option>
+          <option value="bayar pinjaman" <?= ($data['tipe'] == 'bayar pinjaman') ? 'selected' : ''; ?>>Bayar Pinjaman</option>
+          <option value="beri pinjaman" <?= ($data['tipe'] == 'beri pinjaman') ? 'selected' : ''; ?>>Beri Pinjaman</option>
         </select>
       </div>
       <div class="form-group">
         <label for="jumlah">Jumlah</label>
-        <input type="number" step="0.01" name="jumlah" id="jumlah" class="form-control" value="<?= $data['jumlah']; ?>" required>
+        <input type="number" step="0.01" name="jumlah" id="jumlah" class="form-control" value="<?= htmlspecialchars($data['jumlah']); ?>" required>
       </div>
       <div class="form-group">
-        <label for="deskripsi">Deskripsi (Untuk Pemasukan)</label>
-        <textarea name="deskripsi" id="deskripsi" class="form-control" rows="3"><?= $data['deskripsi']; ?></textarea>
+        <label for="deskripsi">Deskripsi</label>
+        <textarea name="deskripsi" id="deskripsi" class="form-control" rows="3"><?= htmlspecialchars($data['deskripsi']); ?></textarea>
       </div>
       <div class="form-group" id="tagGroup">
-        <label for="tag_id">Tag (Untuk Pengeluaran)</label>
+        <label for="tag_id">Tag (Untuk Pengeluaran, Bayar Pinjaman, dan Beri Pinjaman)</label>
         <select name="tag_id" id="tag_id" class="form-control">
           <option value="">-- Pilih Tag --</option>
           <?php foreach ($tags as $tag): ?>
-            <option value="<?= $tag['id']; ?>" <?= ($data['tag_id'] == $tag['id']) ? 'selected' : ''; ?>><?= $tag['nama_tag']; ?></option>
+            <option value="<?= $tag['id']; ?>" <?= ($data['tag_id'] == $tag['id']) ? 'selected' : ''; ?>><?= htmlspecialchars($tag['nama_tag']); ?></option>
           <?php endforeach; ?>
         </select>
       </div>
