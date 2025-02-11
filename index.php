@@ -130,6 +130,27 @@ foreach ($dates as $date) {
     
     $prev_closing_balance = $closing_balance;
 }
+
+
+// Handle Hutang & Pinjaman Form
+if (isset($_POST['submit_debt'])) {
+    $tanggal = $conn->real_escape_string($_POST['tanggal']);
+    $waktu = $conn->real_escape_string($_POST['waktu']);
+    $jumlah = (float)$_POST['jumlah'];
+    $deskripsi = $conn->real_escape_string($_POST['deskripsi']);
+    $tipe = $conn->real_escape_string($_POST['tipe']);
+    $status = $conn->real_escape_string($_POST['status']);
+
+    $stmt = $conn->prepare("INSERT INTO debts_loans (tanggal, waktu, jumlah, deskripsi, tipe, status) VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("ssdsss", $tanggal, $waktu, $jumlah, $deskripsi, $tipe, $status);
+    
+    if ($stmt->execute()) {
+        echo "<script>alert('Data berhasil disimpan!'); window.location.href='index.php';</script>";
+    } else {
+        echo "<script>alert('Gagal menyimpan data: ".$stmt->error."');</script>";
+    }
+    $stmt->close();
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -163,10 +184,14 @@ foreach ($dates as $date) {
       <a href="input_saldo.php" class="btn btn-primary">Input Saldo Harian</a>
       <a href="input_transaksi.php" class="btn btn-success">Input Transaksi</a>
       <a href="tags.php" class="btn btn-warning">Kelola Tag</a>
+        
     </div>
   
   <!-- Menu Tab -->
   <ul class="nav nav-tabs" id="myTab" role="tablist">
+      <li class="nav-item">
+        <a class="nav-link" id="hutang-tab" data-toggle="tab" href="#hutang-content" role="tab" aria-controls="hutang-content" aria-selected="false">Hutang & Pinjaman</a>
+      </li>
     <li class="nav-item">
       <a class="nav-link active" id="home-tab" data-toggle="tab" href="#home-content" role="tab" aria-controls="home-content" aria-selected="true">Home</a>
     </li>
@@ -204,6 +229,109 @@ foreach ($dates as $date) {
       <p>Gunakan tab di atas untuk beralih antar tampilan sesuai kebutuhan Anda.</p>
     </div>
     
+      
+      
+      <!--tab  hutang-->
+<div class="tab-pane fade" id="hutang-content" role="tabpanel" aria-labelledby="hutang-tab">
+  <h3>Kelola Hutang & Pinjaman</h3>
+  
+  <!-- Form Input -->
+  <form method="POST" class="mb-4">
+    <div class="row">
+      <div class="col-md-3">
+        <div class="form-group">
+          <label>Tanggal</label>
+          <input type="date" name="tanggal" class="form-control" required>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="form-group">
+          <label>Waktu</label>
+          <input type="time" name="waktu" class="form-control" required>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="form-group">
+          <label>Jumlah</label>
+          <input type="number" step="0.01" name="jumlah" class="form-control" placeholder="Rp" required>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="form-group">
+          <label>Tipe</label>
+          <select name="tipe" class="form-control" required>
+            <option value="hutang">Hutang</option>
+            <option value="pinjaman">Pinjaman</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    
+    <div class="row">
+      <div class="col-md-6">
+        <div class="form-group">
+          <label>Deskripsi</label>
+          <textarea name="deskripsi" class="form-control" rows="2"></textarea>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="form-group">
+          <label>Status</label>
+          <select name="status" class="form-control" required>
+            <option value="belum lunas">Belum Lunas</option>
+            <option value="lunas">Lunas</option>
+          </select>
+        </div>
+      </div>
+      <div class="col-md-3 align-self-end">
+        <button type="submit" name="submit_debt" class="btn btn-primary btn-block">Simpan</button>
+      </div>
+    </div>
+  </form>
+
+  <!-- Tabel Data -->
+  <div class="table-responsive">
+    <table class="table table-bordered table-striped">
+      <thead class="thead-dark">
+        <tr>
+          <th>Tanggal</th>
+          <th>Waktu</th>
+          <th>Tipe</th>
+          <th>Jumlah</th>
+          <th>Deskripsi</th>
+          <th>Status</th>
+          <th>Aksi</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php
+        $sqlDebt = "SELECT * FROM debts_loans ORDER BY tanggal DESC, waktu DESC";
+        $resultDebt = $conn->query($sqlDebt);
+        
+        if ($resultDebt && $resultDebt->num_rows > 0) {
+            while ($row = $resultDebt->fetch_assoc()) {
+                echo "<tr>
+                        <td>{$row['tanggal']}</td>
+                        <td>{$row['waktu']}</td>
+                        <td>".ucfirst($row['tipe'])."</td>
+                        <td>Rp ".number_format($row['jumlah'],2,',','.')."</td>
+                        <td>{$row['deskripsi']}</td>
+                        <td><span class='badge ".($row['status']=='lunas'?'badge-success':'badge-warning')."'>".ucfirst($row['status'])."</span></td>
+                        <td>
+                          <a href='edit_debt.php?id={$row['id']}' class='btn btn-sm btn-warning'>Edit</a>
+                          <a href='delete_debt.php?id={$row['id']}' class='btn btn-sm btn-danger' onclick='return confirm(\"Yakin hapus?\")'>Hapus</a>
+                        </td>
+                      </tr>";
+            }
+        } else {
+            echo "<tr><td colspan='7' class='text-center'>Belum ada data</td></tr>";
+        }
+        ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+      
     <!-- Saldo Harian Tab -->
     <div class="tab-pane fade" id="saldo-content" role="tabpanel" aria-labelledby="saldo-tab">
       <h3>Riwayat Saldo Harian</h3>
