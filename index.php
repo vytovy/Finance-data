@@ -129,10 +129,11 @@ foreach ($dates as $date) {
     );
     
     $prev_closing_balance = $closing_balance;
-}
+    
+    
+    // ... kode awal index.php ...
 
-
-// Handle Hutang & Pinjaman Form
+// Handle CRUD Hutang & Pinjaman
 if (isset($_POST['submit_debt'])) {
     $tanggal = $conn->real_escape_string($_POST['tanggal']);
     $waktu = $conn->real_escape_string($_POST['waktu']);
@@ -151,7 +152,37 @@ if (isset($_POST['submit_debt'])) {
     }
     $stmt->close();
 }
+
+// Handle Delete
+if (isset($_GET['delete_debt'])) {
+    $id = (int)$_GET['delete_debt'];
+    $conn->query("DELETE FROM debts_loans WHERE id = $id");
+    header("Location: index.php");
+    exit;
+    }
+
+}
+
+/* ---------------------------------------------------------------------------
+   5. Data untuk Hutang & Pinjaman
+--------------------------------------------------------------------------- */
+$sqlHutang = "SELECT * FROM debts_loans ORDER BY tanggal DESC, waktu DESC";
+$resultHutang = $conn->query($sqlHutang);
+
+// Handle filter tanggal
+$filter_date = isset($_GET['filter_date']) ? $_GET['filter_date'] : '';
+
+
+
+// Ambil semua data barang
+
+// Pastikan koneksi ke database sudah ada dan query untuk data barang sudah dijalankan
+$queryBarang = "SELECT * FROM barang ORDER BY tanggal DESC";
+$resultBarang = $conn->query($queryBarang);
+
+
 ?>
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -184,14 +215,13 @@ if (isset($_POST['submit_debt'])) {
       <a href="input_saldo.php" class="btn btn-primary">Input Saldo Harian</a>
       <a href="input_transaksi.php" class="btn btn-success">Input Transaksi</a>
       <a href="tags.php" class="btn btn-warning">Kelola Tag</a>
-        
-    </div>
+        <a href="input_hutang.php" class="btn btn-info">Input Hutang/Pinjaman</a>
+        <a href="barang.php" class="btn btn-info">Input Barang</a>
+
+  </div>
   
   <!-- Menu Tab -->
   <ul class="nav nav-tabs" id="myTab" role="tablist">
-      <li class="nav-item">
-        <a class="nav-link" id="hutang-tab" data-toggle="tab" href="#hutang-content" role="tab" aria-controls="hutang-content" aria-selected="false">Hutang & Pinjaman</a>
-      </li>
     <li class="nav-item">
       <a class="nav-link active" id="home-tab" data-toggle="tab" href="#home-content" role="tab" aria-controls="home-content" aria-selected="true">Home</a>
     </li>
@@ -207,6 +237,13 @@ if (isset($_POST['submit_debt'])) {
     <li class="nav-item">
       <a class="nav-link" id="mutasi-perhari-tab" data-toggle="tab" href="#mutasi-perhari-content" role="tab" aria-controls="mutasi-perhari-content" aria-selected="false">Mutasi Per Hari</a>
     </li>
+    <li class="nav-item">
+      <a class="nav-link" id="hutang-tab" data-toggle="tab" href="#hutang-content" role="tab" aria-controls="hutang-content" aria-selected="false">Hutang & Pinjaman</a>
+    </li>
+     <li class="nav-item">
+    <a class="nav-link" id="barang-tab" data-toggle="tab" href="#barang-content" role="tab" aria-controls="barang-content" aria-selected="false">Daftar Barang</a>
+    </li>
+    
   </ul>
   
   <!-- Isi Tab -->
@@ -229,109 +266,6 @@ if (isset($_POST['submit_debt'])) {
       <p>Gunakan tab di atas untuk beralih antar tampilan sesuai kebutuhan Anda.</p>
     </div>
     
-      
-      
-      <!--tab  hutang-->
-<div class="tab-pane fade" id="hutang-content" role="tabpanel" aria-labelledby="hutang-tab">
-  <h3>Kelola Hutang & Pinjaman</h3>
-  
-  <!-- Form Input -->
-  <form method="POST" class="mb-4">
-    <div class="row">
-      <div class="col-md-3">
-        <div class="form-group">
-          <label>Tanggal</label>
-          <input type="date" name="tanggal" class="form-control" required>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="form-group">
-          <label>Waktu</label>
-          <input type="time" name="waktu" class="form-control" required>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="form-group">
-          <label>Jumlah</label>
-          <input type="number" step="0.01" name="jumlah" class="form-control" placeholder="Rp" required>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="form-group">
-          <label>Tipe</label>
-          <select name="tipe" class="form-control" required>
-            <option value="hutang">Hutang</option>
-            <option value="pinjaman">Pinjaman</option>
-          </select>
-        </div>
-      </div>
-    </div>
-    
-    <div class="row">
-      <div class="col-md-6">
-        <div class="form-group">
-          <label>Deskripsi</label>
-          <textarea name="deskripsi" class="form-control" rows="2"></textarea>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="form-group">
-          <label>Status</label>
-          <select name="status" class="form-control" required>
-            <option value="belum lunas">Belum Lunas</option>
-            <option value="lunas">Lunas</option>
-          </select>
-        </div>
-      </div>
-      <div class="col-md-3 align-self-end">
-        <button type="submit" name="submit_debt" class="btn btn-primary btn-block">Simpan</button>
-      </div>
-    </div>
-  </form>
-
-  <!-- Tabel Data -->
-  <div class="table-responsive">
-    <table class="table table-bordered table-striped">
-      <thead class="thead-dark">
-        <tr>
-          <th>Tanggal</th>
-          <th>Waktu</th>
-          <th>Tipe</th>
-          <th>Jumlah</th>
-          <th>Deskripsi</th>
-          <th>Status</th>
-          <th>Aksi</th>
-        </tr>
-      </thead>
-      <tbody>
-        <?php
-        $sqlDebt = "SELECT * FROM debts_loans ORDER BY tanggal DESC, waktu DESC";
-        $resultDebt = $conn->query($sqlDebt);
-        
-        if ($resultDebt && $resultDebt->num_rows > 0) {
-            while ($row = $resultDebt->fetch_assoc()) {
-                echo "<tr>
-                        <td>{$row['tanggal']}</td>
-                        <td>{$row['waktu']}</td>
-                        <td>".ucfirst($row['tipe'])."</td>
-                        <td>Rp ".number_format($row['jumlah'],2,',','.')."</td>
-                        <td>{$row['deskripsi']}</td>
-                        <td><span class='badge ".($row['status']=='lunas'?'badge-success':'badge-warning')."'>".ucfirst($row['status'])."</span></td>
-                        <td>
-                          <a href='edit_debt.php?id={$row['id']}' class='btn btn-sm btn-warning'>Edit</a>
-                          <a href='delete_debt.php?id={$row['id']}' class='btn btn-sm btn-danger' onclick='return confirm(\"Yakin hapus?\")'>Hapus</a>
-                        </td>
-                      </tr>";
-            }
-        } else {
-            echo "<tr><td colspan='7' class='text-center'>Belum ada data</td></tr>";
-        }
-        ?>
-      </tbody>
-    </table>
-  </div>
-</div>
-      
     <!-- Saldo Harian Tab -->
     <div class="tab-pane fade" id="saldo-content" role="tabpanel" aria-labelledby="saldo-tab">
       <h3>Riwayat Saldo Harian</h3>
@@ -495,7 +429,100 @@ if (isset($_POST['submit_debt'])) {
         </tbody>
       </table>
     </div>
-    
+          <!--hutang tab-->
+<div class="tab-pane fade" id="hutang-content" role="tabpanel" aria-labelledby="hutang-tab">
+  <h3>Kelola Hutang & Pinjaman</h3>
+
+  <!-- Tabel Data -->
+  <table class="table table-bordered">
+    <thead>
+      <tr>
+        <th>Tanggal</th>
+        <th>Waktu</th>
+        <th>Tipe</th>
+        <th>Jumlah</th>
+        <th>Deskripsi</th>
+        <th>Status</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody>
+      <?php while($row = $resultHutang->fetch_assoc()): ?>
+      <tr>
+        <td><?= $row['tanggal'] ?></td>
+        <td><?= $row['waktu'] ?></td>
+        <td><?= ucfirst($row['tipe']) ?></td>
+        <td>Rp <?= number_format($row['jumlah'], 2, ',', '.') ?></td>
+        <td><?= $row['deskripsi'] ?></td>
+        <td>
+          <span class="badge <?= $row['status'] == 'lunas' ? 'badge-success' : 'badge-warning' ?>">
+            <?= ucfirst($row['status']) ?>
+          </span>
+        </td>
+        <td>
+          <a href="edit_hutang.php?id=<?= $row['id'] ?>" class="btn btn-warning btn-sm">Edit</a>
+          <!--a href="delete_hutang.php?id=<?= $row['id'] ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin hapus?')">Hapus</a-->
+        </td>
+      </tr>
+      <?php endwhile; ?>
+    </tbody>
+  </table>
+</div>
+
+
+
+<!-- Tab Daftar Barang -->
+<div class="tab-pane fade" id="barang-content" role="tabpanel" aria-labelledby="barang-tab">
+  <h3>Daftar Barang</h3>
+  <!-- Tabel Data Barang -->
+  <table class="table table-bordered">
+    <thead>
+      <tr>
+        <th>Tanggal</th>
+        <th>Nama Toko</th>
+        <th>Alamat</th>
+        <th>Nama Barang</th>
+        <th>Harga</th>
+        <th>Status</th>
+        <th>Deskripsi</th>
+        <th>Foto</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody>
+      <?php if ($resultBarang && $resultBarang->num_rows > 0): ?>
+        <?php while ($row = $resultBarang->fetch_assoc()): ?>
+          <tr>
+            <td><?= $row['tanggal'] ?></td>
+            <td><?= $row['nama_toko'] ?></td>
+            <td><?= $row['alamat_toko'] ?></td>
+            <td><?= $row['nama_barang'] ?></td>
+            <td>Rp<?= number_format($row['harga_barang'], 2, ',', '.') ?></td>
+            <td><?= $row['status'] ?></td>
+            <td><?= $row['deskripsi'] ?></td>
+            <td>
+              <?php if (!empty($row['foto'])): ?>
+                <img src="<?= $row['foto'] ?>" width="50">
+              <?php else: ?>
+                Tidak ada foto
+              <?php endif; ?>
+            </td>
+            <td>
+              <a href="edit_barang.php?id=<?= $row['id'] ?>" class="btn btn-warning btn-sm">Edit</a>
+              <a href="hapus_barang.php?id=<?= $row['id'] ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin ingin menghapus?')">Hapus</a>
+            </td>
+          </tr>
+        <?php endwhile; ?>
+      <?php else: ?>
+          <tr>
+            <td colspan="9" class="text-center">Tidak ada data barang</td>
+          </tr>
+      <?php endif; ?>
+    </tbody>
+  </table>
+</div>
+
+
   </div> <!-- End tab-content -->
   
 </div> <!-- End container -->
